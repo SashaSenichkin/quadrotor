@@ -14,25 +14,28 @@ namespace quadrotor
         /// <summary>
         /// power (max H)
         /// </summary>
-        public float Acceleration;
+        public float MaxAcceleration;
 
         public float AirResist = 400;
         public float gravityConstant = 10f;
         private float MaxAngle { get => 40; } // Mathf.Acos(gravityConstant / (4 * Acceleration))
 
+        [Header("PID")]
+        public PID angleControllerX = new PID();
+        public PID angleControllerY = new PID();
+        public PID angleControllerZ = new PID();
+
         private Vector3 CopterGeneralForce = Vector3.zero;
         private Dictionary<Transform, float> PropellerThrusts;
+
         /// <summary>
         /// joystick emulator
         /// </summary>
         private float InputHorizontal = 0f;
         private float InputVertical = 0f;
+        private float InputThrust = 0f;
         private bool KeepAltitude = true;
 
-        [Header("PID")]
-        public PID angleControllerX = new PID();
-        [Header("PID")]
-        public PID angleControllerZ = new PID();
         public void SetHorizontal(float value)
         {
             InputHorizontal = value;
@@ -40,6 +43,10 @@ namespace quadrotor
         public void SetVertical(float value)
         {
             InputVertical = value;
+        }
+        public void SetThrust(float value)
+        {
+            InputThrust = value * MaxAcceleration;
         }
         public void SetKeepAltitude(bool value)
         {
@@ -52,7 +59,6 @@ namespace quadrotor
             float dt = Time.fixedDeltaTime;
             float angleError = Mathf.DeltaAngle(currentAngle, targetAngle);
             var result = controller.Calculate(angleError, dt);
-
             return result;
         }
 
@@ -87,6 +93,8 @@ namespace quadrotor
 
             foreach (var item in PropellerPoints)
                 PropellerThrusts.Add(item, 0f);
+
+            //rigbody.AddRelativeTorque(new Vector3(10,0,0));//debug
         }
 
 
@@ -95,18 +103,21 @@ namespace quadrotor
             ClearBuffers();
 
             float torqueX = ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
-            float torqueZ = ControlRotate(InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
-            if (torqueX != 0)
-            {
+            float torqueY = ControlRotate(0, transform.eulerAngles.y, angleControllerY);
+            float torqueZ = -ControlRotate(InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
 
-            }
-            AddTorque(new Vector3(torqueX, 0, torqueZ));
+            torqueX = torqueX > 1 ? 1 : torqueX;
+            torqueY = torqueY > 1 ? 1 : torqueY;
+            torqueZ = torqueZ > 1 ? 1 : torqueZ;
+
+            AddTorque(new Vector3(torqueX, torqueY, torqueZ));
+            EnviromentResistance();
 
 
             foreach (var item in PropellerThrusts)
             {
                 var thrust = item.Value;
-                rigbody.AddForceAtPosition(thrust * Acceleration * transform.up * Time.fixedDeltaTime, item.Key.position);
+                rigbody.AddForceAtPosition (thrust * InputThrust * transform.up * Time.fixedDeltaTime, item.Key.position);
             }
 
             rigbody.AddForce(CopterGeneralForce * Time.fixedDeltaTime);
@@ -122,7 +133,7 @@ namespace quadrotor
 
         private void GravityCompensation()
         {
-            var addToAllPropellers = (rigbody.mass * gravityConstant / Acceleration - PropellerThrusts.Sum(x => x.Value)) / 4;
+            var addToAllPropellers = (rigbody.mass * gravityConstant / InputThrust - PropellerThrusts.Sum(x => x.Value)) / 4;
             foreach (var point in PropellerPoints)
                 PropellerThrusts[point] += addToAllPropellers;
         }
@@ -139,6 +150,10 @@ namespace quadrotor
             CopterGeneralForce += new Vector3(CalculateResistance(rigbody.velocity.x),
                                               CalculateResistance(rigbody.velocity.y),
                                               CalculateResistance(rigbody.velocity.z));
+
+            rigbody.AddRelativeTorque(new Vector3(CalculateResistance(rigbody.angularVelocity.x),
+                                                  CalculateResistance(rigbody.angularVelocity.y),
+                                                  CalculateResistance(rigbody.angularVelocity.z)));
         }
 
         float CalculateResistance(float axisSpeed)
@@ -159,7 +174,7 @@ namespace quadrotor
             foreach (var item in PropellerThrusts)
             {
                 var thrust = item.Value;
-                Gizmos.DrawLine(item.Key.position, transform.up * Acceleration * thrust + item.Key.position);
+                Gizmos.DrawLine(item.Key.position, transform.up * InputThrust * thrust + item.Key.position);
             }
 
         }
