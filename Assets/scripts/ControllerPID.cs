@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace quadrotor
 {
-    public class ControllerPID : MonoBehaviour
+    public class ControllerPID : MonoBehaviour, IController
     {
         public Transform[] PropellerPoints;
         private Rigidbody rigbody;
@@ -28,32 +28,11 @@ namespace quadrotor
         private Vector3 CopterGeneralForce = Vector3.zero;
         private Dictionary<Transform, float> PropellerThrusts;
 
-        /// <summary>
-        /// joystick emulator
-        /// </summary>
-        private float InputHorizontal = 0f;
-        private float InputVertical = 0f;
-        private float InputThrust = 0f;
-        private bool KeepAltitude = true;
+        public float InputHorizontal { get; set; }
+        public float InputVertical { get; set; }
+        public float InputThrust { get; set; }
 
-        public void SetHorizontal(float value)
-        {
-            InputHorizontal = value;
-        }
-        public void SetVertical(float value)
-        {
-            InputVertical = value;
-        }
-        public void SetThrust(float value)
-        {
-            InputThrust = value * MaxAcceleration;
-        }
-        public void SetKeepAltitude(bool value)
-        {
-            KeepAltitude = value;
-        }
-
-
+       
         public float ControlRotate(float targetAngle, float currentAngle, PID controller)
         {
             float dt = Time.fixedDeltaTime;
@@ -102,23 +81,15 @@ namespace quadrotor
         {
             ClearBuffers();
 
-            float torqueX = ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
+            float torqueX = -ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
             float torqueY = ControlRotate(0, transform.eulerAngles.y, angleControllerY);
-            float torqueZ = -ControlRotate(InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
-
-            torqueX = torqueX > 1 ? 1 : torqueX;
-            torqueY = torqueY > 1 ? 1 : torqueY;
-            torqueZ = torqueZ > 1 ? 1 : torqueZ;
+            float torqueZ = ControlRotate(-InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
 
             AddTorque(new Vector3(torqueX, torqueY, torqueZ));
             EnviromentResistance();
 
-
             foreach (var item in PropellerThrusts)
-            {
-                var thrust = item.Value;
-                rigbody.AddForceAtPosition (thrust * InputThrust * transform.up * Time.fixedDeltaTime, item.Key.position);
-            }
+                rigbody.AddForceAtPosition (CalculateThrust(item.Value) * Time.fixedDeltaTime, item.Key.position);
 
             rigbody.AddForce(CopterGeneralForce * Time.fixedDeltaTime);
         }
@@ -160,6 +131,11 @@ namespace quadrotor
         {
             return - Math.Sign(axisSpeed) * axisSpeed * axisSpeed / AirResist;
         }
+        Vector3 CalculateThrust(float thrust)
+        {
+            var result = (InputThrust - thrust) * transform.up * MaxAcceleration;
+            return result;
+        }
 
         private void OnDrawGizmos()
         {
@@ -173,8 +149,7 @@ namespace quadrotor
 
             foreach (var item in PropellerThrusts)
             {
-                var thrust = item.Value;
-                Gizmos.DrawLine(item.Key.position, transform.up * InputThrust * thrust + item.Key.position);
+                Gizmos.DrawLine(item.Key.position, CalculateThrust(item.Value) + item.Key.position);
             }
 
         }

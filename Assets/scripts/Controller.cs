@@ -7,7 +7,7 @@ using UnityEngine;
 namespace quadrotor
 {
     //rigid engines case
-    public class Controller : MonoBehaviour
+    public class Controller : MonoBehaviour, IController
     {
         public Transform[] PropellerPoints;
         private Rigidbody rigbody;
@@ -19,29 +19,14 @@ namespace quadrotor
 
         public float AirResist = 400;
         public float gravityConstant = 10f;
-        private float MaxAngle { get =>40; } // Mathf.Acos(gravityConstant / (4 * Acceleration))
 
         private Vector3 CopterGeneralForce = Vector3.zero;
         private Dictionary<Transform, float> PropellerThrusts;
-        /// <summary>
-        /// joystick emulator
-        /// </summary>
-        private float InputHorizontal = 0f;
-        private float InputVertical = 0f;
-        private bool KeepAltitude = true;
 
-        public void SetHorizontal(float value)
-        {
-            InputHorizontal = value;
-        }
-        public void SetVertical(float value)
-        {
-            InputVertical = value;
-        }
-        public void SetKeepAltitude(bool value)
-        {
-            KeepAltitude = value;
-        }
+
+        public float InputHorizontal { get; set; }
+        public float InputVertical { get; set; }
+        public float InputThrust { get; set; }
 
         void Start()
         {
