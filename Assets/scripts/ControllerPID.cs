@@ -10,7 +10,7 @@ namespace quadrotor
     {
         public Transform[] PropellerPoints;
         private Rigidbody rigbody;
-
+        List<float> history = new List<float>();
         /// <summary>
         /// power (max H)
         /// </summary>
@@ -32,13 +32,13 @@ namespace quadrotor
         public float InputVertical { get; set; }
         public float InputThrust { get; set; }
 
-       
+
         public float ControlRotate(float targetAngle, float currentAngle, PID controller)
         {
             float dt = Time.fixedDeltaTime;
             float angleError = Mathf.DeltaAngle(currentAngle, targetAngle);
             var result = controller.Calculate(angleError, dt);
-            return result;
+            return Mathf.Clamp(result, -0.1f, 0.1f);
         }
 
         //public Vector2 ControlForce(Vector2 movement)
@@ -80,18 +80,18 @@ namespace quadrotor
         void FixedUpdate()
         {
             ClearBuffers();
-
-            float torqueX = -ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
+            AddGravity();
+            //history.Add((Time.fixedDeltaTime));
+            float torqueX = ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
             float torqueY = ControlRotate(0, transform.eulerAngles.y, angleControllerY);
-            float torqueZ = ControlRotate(-InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
+            float torqueZ = -ControlRotate(-InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
 
             AddTorque(new Vector3(torqueX, torqueY, torqueZ));
             EnviromentResistance();
-
             foreach (var item in PropellerThrusts)
-                rigbody.AddForceAtPosition (CalculateThrust(item.Value) * Time.fixedDeltaTime, item.Key.position);
+                rigbody.AddForceAtPosition (CalculateThrust(item.Value), item.Key.position);
 
-            rigbody.AddForce(CopterGeneralForce * Time.fixedDeltaTime);
+            rigbody.AddForce(CopterGeneralForce);
         }
         private void AddTorque(Vector3 torque)
         {
@@ -133,7 +133,7 @@ namespace quadrotor
         }
         Vector3 CalculateThrust(float thrust)
         {
-            var result = (InputThrust - thrust) * transform.up * MaxAcceleration;
+            var result = (InputThrust * MaxAcceleration + thrust) * transform.up ;
             return result;
         }
 
