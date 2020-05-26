@@ -26,6 +26,7 @@ namespace quadrotor
 
         public float InputHorizontal { get; set; }
         public float InputVertical { get; set; }
+        public float InputCameraAngle { get; set; }
         public float InputThrust { get; set; }
 
         void Start()

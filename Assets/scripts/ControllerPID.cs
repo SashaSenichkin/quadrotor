@@ -18,7 +18,7 @@ namespace quadrotor
 
         public float AirResist = 400;
         public float gravityConstant = 10f;
-        private float MaxAngle { get => 40; } // Mathf.Acos(gravityConstant / (4 * Acceleration))
+        private float MaxAngle { get => 20; } // Mathf.Acos(gravityConstant / (4 * Acceleration))
 
         [Header("PID")]
         public PID angleControllerX = new PID();
@@ -30,6 +30,7 @@ namespace quadrotor
 
         public float InputHorizontal { get; set; }
         public float InputVertical { get; set; }
+        public float InputCameraAngle { get; set; }
         public float InputThrust { get; set; }
 
 
@@ -81,12 +82,15 @@ namespace quadrotor
         {
             ClearBuffers();
             AddGravity();
-            //history.Add((Time.fixedDeltaTime));
-            float torqueX = ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
-            float torqueY = ControlRotate(0, transform.eulerAngles.y, angleControllerY);
-            float torqueZ = -ControlRotate(-InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
+            if (true)
+                GravityCompensation();
 
-            AddTorque(new Vector3(torqueX, torqueY, torqueZ));
+            float torqueX = ControlRotate(InputVertical * MaxAngle, transform.eulerAngles.x, angleControllerX);
+            float torqueY = ControlRotate(InputCameraAngle * 60, transform.eulerAngles.y, angleControllerY);
+            float torqueZ = -ControlRotate(-InputHorizontal * MaxAngle, transform.eulerAngles.z, angleControllerZ);
+            rigbody.AddRelativeTorque(Vector3.up * torqueY); //gyroscope emulator
+
+            AddTorque(new Vector3(torqueX, 0, torqueZ));
             EnviromentResistance();
             foreach (var item in PropellerThrusts)
                 rigbody.AddForceAtPosition (CalculateThrust(item.Value), item.Key.position);
@@ -104,7 +108,9 @@ namespace quadrotor
 
         private void GravityCompensation()
         {
-            var addToAllPropellers = (rigbody.mass * gravityConstant / InputThrust - PropellerThrusts.Sum(x => x.Value)) / 4;
+            InputThrust = Mathf.Clamp(rigbody.mass * gravityConstant / (4f * Mathf.Sin(transform.eulerAngles.x) * Mathf.Sin(transform.eulerAngles.y)) / MaxAcceleration, 0, 1);
+            var addToAllPropellers = rigbody.mass * gravityConstant / (4f * Mathf.Sin(transform.eulerAngles.x) * Mathf.Sin(transform.eulerAngles.y));
+            addToAllPropellers = Mathf.Clamp(addToAllPropellers, 0, 1);
             foreach (var point in PropellerPoints)
                 PropellerThrusts[point] += addToAllPropellers;
         }

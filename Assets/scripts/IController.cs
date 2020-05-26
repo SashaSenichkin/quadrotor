@@ -15,6 +15,7 @@ namespace quadrotor
         /// </summary>
         float InputHorizontal { get; set; }
         float InputVertical { get; set; }
+        float InputCameraAngle { get; set; }
         float InputThrust { get; set; }
     }
 }

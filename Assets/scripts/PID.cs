@@ -6,7 +6,9 @@ using UnityEngine;
 
 namespace quadrotor
 {
-    //[System.Serializable]
+    /// <summary>
+    /// https://en.wikipedia.org/wiki/PID_controller
+    /// </summary>
     public class PID
     {
         public float Kp, Ki, Kd;
@@ -14,7 +16,7 @@ namespace quadrotor
         private float lastError;
         private float P, I, D;
 
-        public PID(float pFactor = 5f, float iFactor = 0, float dFactor = 1f)
+        public PID(float pFactor = 5f, float iFactor = 0, float dFactor = 3f)
         {
             Kp = pFactor;
             Ki = iFactor;

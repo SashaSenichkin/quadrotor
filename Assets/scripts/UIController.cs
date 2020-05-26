@@ -13,6 +13,7 @@ namespace quadrotor
         public Slider Vertical;
         public Slider Horizontal;
         public Slider Thrust;
+        public Slider CameraAngle;
 
         public GameObject ControllerGO;
         public IController Controller;
@@ -23,6 +24,7 @@ namespace quadrotor
             Vertical.onValueChanged.AddListener((x) => { if (Mathf.Abs(Controller.InputVertical - x) > 0.01f) Controller.InputVertical = x; });
             Horizontal.onValueChanged.AddListener((x) => { if (Mathf.Abs(Controller.InputHorizontal - x) > 0.01f) Controller.InputHorizontal = x; });
             Thrust.onValueChanged.AddListener((x) => { if (Mathf.Abs(Controller.InputThrust - x) > 0.01f) Controller.InputThrust = x; });
+            CameraAngle.onValueChanged.AddListener((x) => { if (Mathf.Abs(Controller.InputCameraAngle - x) > 0.01f) Controller.InputCameraAngle = x; });
 
             Controller = ControllerGO.GetComponent<IController>();
             if (Controller == null)
@@ -57,11 +59,11 @@ namespace quadrotor
             }
             else if (Input.GetKey(KeyCode.Z))
             {
-
+                CameraAngle.value -= InrementRate * Time.fixedDeltaTime;
             }
             else if (Input.GetKey(KeyCode.X))
             {
-
+                CameraAngle.value += InrementRate * Time.fixedDeltaTime;
             }
         }
     }
